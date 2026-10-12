@@ -1,0 +1,5 @@
+data/
+tracking/
+ami_rows.json
+__pycache__/
+*.pyc

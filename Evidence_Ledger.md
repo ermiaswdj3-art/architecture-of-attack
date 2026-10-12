@@ -1,0 +1,42 @@
+# Metric Football — Evidence Ledger (as of 2026-10-05)
+Data: StatsBomb open data, FIFA World Cup 2018 (64 matches, 227,825 events); Metrica Sample Game 1 (25 Hz tracking, 1 match).
+Code: /home/claude/evidence (tests.py passes 8/8).
+
+| # | Claim | Test | Result | Status |
+|---|---|---|---|---|
+| 1 | Event data is reliable enough to analyze | Shot goals + own goals = official score, all 64 matches | 157 + 12 = 169, exact | Consistent with StatsBomb match metadata (not an independent source) |
+| 2 | "Possessions over 30 s are low-value" (Manifesto) | Shot rate / xG by duration | Tautological as written. Long open-play possessions: 25.0% of possessions, 36.7% of goals, 38.7% of xG. Only long-and-stagnant (<10 m progress, n=63) are low-yield (shot 7.9%, xG/poss 0.004 vs 20.8% / 0.017 for 30 m+ progress) | Not supported as stated; stagnation version supported (small n) |
+| 3 | AMI separates a boring 0-0 from an attacking Final | France in 0-0 vs Final, corrected data | AMI 0.133 vs 0.129; gap 0.004 = 0.46 SD of team-match variation (SD 0.0087, n=128); an earlier 0.81 SD figure used a stale pre-fix gap | Not supported |
+| 4 | AMI predicts dangerous possessions | AUC for "possession contains a shot", n=9,155 | AMI 0.492 (CI 0.473-0.508), chance | Not supported |
+| 5 | AMI predicts team-match xG | Spearman, n=128 | -0.04 (CI -0.21 to 0.13) | Not supported |
+| 6 | Tempo (V_t) matters | AUC for shot | 0.422 (below chance; likely short hurried clearances inflate speed — untested) | Not supported; mechanism untested |
+| 7 | T_occ adds information | AUC 0.597 vs trivial baseline (number of actions) 0.588 | It is a proxy for possession length | Not supported as independent signal |
+| 8 | Progress rate drives shots | AUC within length strata | 0.31-0.57; ceiling-limited | Not supported |
+| 9 | Territory reached matters | Furthest x, within length strata | AUC 0.65-0.83 | Supported (descriptive, not causal) |
+| 10 | Pitch control (v2) is physically sensible | Kickoff symmetry, 10 frames | Passed | Sanity-checked |
+| 11 | Pitch control at pass target predicts pass success | Game 1 (799 passes): AUC 0.594. Tuned (speed, sigma, lambda) on Game 1 only, then tested on untouched Game 2 (964 passes) | Game 2 out-of-sample AUC 0.658 (CI 0.607-0.705); default constants 0.657; pass length alone 0.512 | Supported, replicated out of sample (2 matches, same data provider; effect modest) |
+| 13 | The "boring 0-0" problem is common | Count of final scores, 64 matches | 1 goalless draw (Denmark-France); 16 matches with <=1 goal; 13 level at the end; 2.64 goals/match | Not supported as framed; reframe around stalled possessions |
+| 14 | Scale of the datasets used | Counted from the loaded files | 64 matches, 227,825 events (3,560/match); Metrica Game 1: 145,006 frames over 5,800 s, Game 2: 141,156 over 5,646 s, both 25 Hz | Descriptive fact |
+| 15 | Hexagon grid size (design) | Arithmetic | 3 m side -> 23.4 m^2 per hex -> 305.4 hexes on a 105x68 m pitch. NOTE: see row 27, the engine's code did not implement this grid | Descriptive fact |
+| 16 | More possession wins matches (steelman) | WC2018: win rate of higher-possession side in 51 decisive matches; Spearman of possession share vs goal difference, 64 matches | 28/51 = 54.9% (Wilson CI 41.4-67.7%); rho 0.11 (CI -0.12 to 0.33); France 34% possession in the 4-2 Final, 64% in the 0-0 v Denmark | Not supported that possession alone wins; indistinguishable from chance at this sample size |
+| 17 | StatsBomb coordinates are sane and normalised | Scan of all located events; shot positions | x 1-120, y 1-80, none outside; 1,667 shots avg x=103.9; 61.4% from x>=102 | Consistency check (not proof of accuracy) |
+| 18 | AMI weights (0.4/0.4/0.2) | Provenance | Asserted by the author, not fit or derived | Untested by design |
+| 19 | Speed artifacts and ceilings | Count of implied speeds; forward-only definition | 12 m/s single ceiling would drop 15.4% of passes (Final) / 14.5% (64 matches); carries >11.5 m/s: 1.6% (Final), 1.0% (64); passes >32 m/s: 0.18% (64); Kante carry 46.2 m/s; 14 Final carries with duration 0.001 s | Ceilings are judgment calls; sensitivity to them untested |
+| 20 | AMI sensitivity and component structure | Weight sweeps, 9,155 possessions | T_occ vs compactness rho -0.70; T vs V -0.39; V vs C 0.21; AMI vs parts 0.16/0.39/0.09; top-200 overlap 60-140 when one weight changes | Ranking fragile to asserted weights |
+| 21 | Bugs and their effects | Reconciliation of counts; regression tests | V_t = 96% of raw AMI (T 1.2%, C 2.6%); 1,538 of 10,693 sequences (14.4%) were phantom possessions; Final France V_t 4.69->4.72, 0-0 France 3.68->3.22, tournament 4.23->4.01; tests.py 8/8 pass | Fixed and tested |
+| 22 | Stalled long possessions are low-yield (Wilson CIs) | Open-play possessions >30 s by progress | <10 m: 5/63 = 7.9% (CI 3.4-17.3%); 30 m+: 20.8% (CI 18.6-23.2%); no overlap; 0 goals in 63 uninformative; progress and shots partly mechanically linked | Supported, small n, associational |
+| 23 | Index parts add nothing beyond length and place | 5-fold CV logistic AUC, 9,155 possessions | length+place 0.757; +V_t 0.761; +T_occ 0.760; +compactness 0.758; +all three 0.763; +AMI 0.759; AMI alone 0.505 | Not supported; <=0.006 gain |
+| 24 | Draw vs Final match facts (event data) | Denmark-France vs France-Croatia | Possession: France 64% vs 34%; shots 11 vs 8; xG 0.42 vs 1.10; long open-play possessions 20 vs 3; total xG 0.54 vs 2.58 | Descriptive, one match each |
+| 25 | Pitch-control kickoff symmetry (model level) | Ball at centre spot; 3 m grid; both Metrica games | Mean P(Home) over pitch 0.441 (G1), 0.483 (G2); Home controls 84%/91% of own half; Away 94%/96% | Passes a coarse sanity check; no pre-set tolerance; rules out gross errors only |
+| 26 | Pitch control beats a trivial baseline | AUC for pass success vs nearest-opponent distance; 5-fold CV | G1: 0.594 vs 0.555; G2: 0.657 vs 0.592; CV control+length 0.571/0.656 vs opponent+length 0.524/0.616; adding opponent distance to control: 0.564/0.651 (no gain); pass length alone 0.485/0.512 | Supported; modest; 2 games, 1 provider |
+| 27 | The engine's grid is not the hexagonal grid described | Code audit + recompute (hex_vs_square.py) | engine.py map_to_cell bins positions into rectangles of 4.5 x 2.6 m (11.7 m^2, about 611 cells), not 23.4 m^2 hexagons; T_occ divided by 305 so its scale was off by about 2x. Rerun with the book's original scaling reproduces AMI AUC 0.491 | Found by my own audit, October 2026. Does not change the conclusion (AMI near 0.5 on every grid) |
+| 28 | True hexagons vs equal-area squares | hex_vs_square.py, 9,155 possessions, outcome = possession contains a shot, 300 bootstraps | AMI AUC: true hex 0.497, square 0.498; difference -0.0007 (95% CI -0.004 to +0.002); T_occ AUC 0.598 vs 0.599; compactness 0.438 for both | Hexagons showed no advantage over squares on this outcome. This does not show hexagons are worse, only that this test cannot tell them apart |
+| 29 | Audit of FOUND claims by an independent reviewer (Oct 2026) | 39 FOUND sentences re-run against code | 35 match; wording corrected for: grid-rerun scope (only AMI vs shots rerun; AUC 0.491 -> 0.497, diff +0.006, CI +0.001 to +0.011), 'opposite' (36.7% of goals = 18 of 49 open-play goals; goal rate per possession flat ~1.2%), 13 level = 9 group draws, Table 12.1 now produced by committed script strata_auc.py (values 0.32/0.44/0.53/0.57/0.57 etc.), Table 4.1 selection noted | Fixed in text |
+| 30 | Pitch control vs nearest-opponent: paired difference | Paired bootstrap (paired_bootstrap.py), confirmed by an independent reviewer | G1 +0.038 (0.006 to 0.076); G2 +0.065 (0.033 to 0.101), paired_bootstrap.py | Game 1 edge thin; Game 2 clear |
+| 12 | A "new architecture of attack" reduces 0-0s | Nothing tested | — | Untestable with current data (argument, not finding) |
+
+## Bugs found and fixed (book chapter material)
+1. V_t used match clock as dt. 2. No normalization (V_t = about 96% of AMI). 3. Single speed ceiling dropped 15% of real passes. 4. Transcription bug in tracking snippet. 5. Phase 2 grouped actions by acting team, creating ~1,500 fake defender "possessions" (14% of rows); fixed by grouping on possession_team.
+
+## Honest limits
+Weights (0.4/0.4/0.2) asserted, never fit. Pitch control uses literature-default constants, no goalkeeper or defensive-advantage terms. Tracking validation is one match. Event data has no off-ball positions. All associations are observational.
